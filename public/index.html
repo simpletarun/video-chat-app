@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>GUI Video Chat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <h1>Video Call + Chat</h1>
+  </div>
+
+  <div class="video-section">
+
+    <div class="video-card">
+      <h3>You</h3>
+      <video id="localVideo" autoplay playsinline muted></video>
+    </div>
+
+    <div class="video-card">
+      <h3>Remote User</h3>
+      <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+
+  </div>
+
+  <div class="controls">
+    <button id="callBtn">📞 Start Call</button>
+  </div>
+
+  <div class="chat-box">
+
+    <div id="messages"></div>
+
+    <div class="chat-input">
+      <input
+        type="text"
+        id="messageInput"
+        placeholder="Type message..."
+      />
+
+      <button id="sendBtn">Send</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
