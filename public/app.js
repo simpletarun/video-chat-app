@@ -199,15 +199,18 @@ socket.on("all-users", users => {
 });
 
 socket.on("user-joined", user => {
-  updateUserList([...document.querySelectorAll("#userList li")].map(li => ({
-    id: li.dataset.id,
-    username: li.textContent.replace(" (you)", "")
-  }), user));
+  const li = document.createElement("li");
+  li.textContent = user.username + (user.id === myId ? " (you)" : "");
+  li.dataset.id = user.id;
+  userList.appendChild(li);
   addSystemMessage(`${user.username} joined the room`);
   if (!targetUser) targetUser = user.id;
 });
 
 socket.on("user-left", user => {
+  document.querySelectorAll("#userList li").forEach(li => {
+    if (li.dataset.id === user.id) li.remove();
+  });
   addSystemMessage(`${user.username} left the room`);
   if (targetUser === user.id) {
     remoteStatus.classList.remove("hidden");
