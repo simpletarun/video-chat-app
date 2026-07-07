@@ -1,57 +1,76 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-  <title>GUI Video Chat</title>
+  <title>Video Chat App</title>
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
 <div class="container">
-
   <div class="header">
     <h1>Video Call + Chat</h1>
+    <div class="status-bar">
+      <span id="statusIndicator" class="status-dot offline"></span>
+      <span id="statusText">Disconnected</span>
+    </div>
   </div>
 
   <div class="video-section">
-
     <div class="video-card">
-      <h3>You</h3>
+      <h3 id="localLabel">You</h3>
       <video id="localVideo" autoplay playsinline muted></video>
     </div>
-
     <div class="video-card">
-      <h3>Remote User</h3>
+      <h3 id="remoteLabel">Remote User</h3>
       <video id="remoteVideo" autoplay playsinline></video>
+      <div id="remoteStatus" class="remote-status hidden">Remote user disconnected</div>
     </div>
-
   </div>
 
   <div class="controls">
+    <input
+      type="text"
+      id="usernameInput"
+      placeholder="Set display name..."
+      maxlength="20"
+    />
+    <button id="setNameBtn">Set Name</button>
     <button id="callBtn">📞 Start Call</button>
+    <button id="endCallBtn" class="danger" disabled>✖ End Call</button>
+    <button id="muteBtn" disabled>🎤 Mute</button>
+    <button id="videoBtn" disabled>📹 Video Off</button>
+  </div>
+
+  <div class="online-users">
+    <h3>Online</h3>
+    <ul id="userList"></ul>
   </div>
 
   <div class="chat-box">
-
     <div id="messages"></div>
-
     <div class="chat-input">
       <input
         type="text"
         id="messageInput"
         placeholder="Type message..."
       />
-
       <button id="sendBtn">Send</button>
     </div>
-
   </div>
+</div>
 
+<div id="incomingCallModal" class="modal hidden">
+  <div class="modal-content">
+    <h2>Incoming Call</h2>
+    <p id="callerName">Someone is calling you...</p>
+    <div class="modal-buttons">
+      <button id="acceptCallBtn" class="success">✓ Accept</button>
+      <button id="rejectCallBtn" class="danger">✖ Decline</button>
+    </div>
+  </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="app.js"></script>
-
 </body>
 </html>

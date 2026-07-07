@@ -1,12 +1,13 @@
 {
-  "name": "webrtc",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "video-chat-app",
+  "version": "2.0.0",
+  "description": "Peer-to-peer video calling and chat app using WebRTC and Socket.IO",
+  "main": "server.js",
   "scripts": {
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["webrtc", "video-call", "chat", "socket.io"],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
