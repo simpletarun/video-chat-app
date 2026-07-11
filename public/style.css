@@ -80,6 +80,38 @@ body {
   border-color: #38bdf8;
 }
 
+.media-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.media-status {
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: #334155;
+  color: #94a3b8;
+}
+
+.media-status.ok {
+  background: #14331f;
+  color: #4ade80;
+}
+
+.media-status.bad {
+  background: #3f1d1d;
+  color: #f87171;
+}
+
+#enableMediaBtn {
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
 .video-section {
   display: flex;
   gap: 20px;

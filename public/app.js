@@ -20,6 +20,8 @@ const nameInput = document.getElementById("nameInput");
 const joinBtn = document.getElementById("joinBtn");
 const roomIndicator = document.getElementById("roomIndicator");
 const roomCount = document.getElementById("roomCount");
+const mediaStatus = document.getElementById("mediaStatus");
+const enableMediaBtn = document.getElementById("enableMediaBtn");
 const incomingCallModal = document.getElementById("incomingCallModal");
 const callerName = document.getElementById("callerName");
 const acceptCallBtn = document.getElementById("acceptCallBtn");
@@ -144,17 +146,61 @@ function resetCallUI() {
   renderUserList();
 }
 
-async function initMedia() {
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: true
-    });
-    localVideo.srcObject = localStream;
-  } catch (err) {
-    console.error("Media error:", err);
-    addSystemMessage("Camera/microphone access denied. You can still receive calls.");
+function updateMediaStatus(text, ok) {
+  if (!mediaStatus) return;
+  mediaStatus.textContent = text;
+  mediaStatus.className = "media-status " + (ok ? "ok" : "bad");
+}
+
+function describeMediaError(err) {
+  switch (err && err.name) {
+    case "NotAllowedError":
+    case "SecurityError":
+      return "Permission denied. Click the camera icon in the address bar, allow access, then click 'Enable Camera & Mic'.";
+    case "NotFoundError":
+    case "OverconstrainedError":
+      return "No camera/microphone found on this device.";
+    case "NotReadableError":
+    case "AbortError":
+      return "Camera is in use by another app or browser tab. Close it and click 'Enable Camera & Mic'.";
+    default:
+      return "Camera/microphone unavailable: " + (err && err.name ? err.name : "unknown error") + ".";
   }
+}
+
+async function initMedia() {
+  if (!window.isSecureContext) {
+    const msg = "Camera/mic needs a secure context (https or http://localhost). Don't open the file directly — run 'npm start' and use http://localhost:3000.";
+    updateMediaStatus("Camera blocked: insecure context", false);
+    addSystemMessage(msg);
+    return;
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    updateMediaStatus("getUserMedia not supported", false);
+    addSystemMessage("This browser does not support camera/microphone (getUserMedia).");
+    return;
+  }
+  const attempts = [
+    { video: true, audio: true },
+    { video: true, audio: false },
+    { video: false, audio: true }
+  ];
+  for (const constraints of attempts) {
+    try {
+      localStream = await navigator.mediaDevices.getUserMedia(constraints);
+      localVideo.srcObject = localStream;
+      localVideo.play().catch(() => {});
+      const hasV = localStream.getVideoTracks().length > 0;
+      const hasA = localStream.getAudioTracks().length > 0;
+      updateMediaStatus(`Camera: ${hasV ? "on" : "off"} · Mic: ${hasA ? "on" : "off"}`, true);
+      addSystemMessage(`Media ready — camera: ${hasV ? "on" : "off"}, mic: ${hasA ? "on" : "off"}.`);
+      return;
+    } catch (err) {
+      console.error("Media error:", err);
+    }
+  }
+  updateMediaStatus("Camera/mic unavailable", false);
+  addSystemMessage(describeMediaError(err));
 }
 
 function createPeer() {
@@ -175,6 +221,7 @@ function createPeer() {
   peer.ontrack = event => {
     if (event.streams && event.streams[0]) {
       remoteVideo.srcObject = event.streams[0];
+      remoteVideo.play().catch(() => {});
     }
     remoteStatus.classList.add("hidden");
   };
@@ -414,7 +461,12 @@ function joinRoom(room, name) {
 joinBtn.onclick = () => {
   const room = roomInput.value.trim() || "lobby";
   const name = nameInput.value.trim();
+  if (!localStream) initMedia();
   joinRoom(room, name);
+};
+
+enableMediaBtn.onclick = () => {
+  initMedia();
 };
 
 nameInput.addEventListener("keydown", e => {

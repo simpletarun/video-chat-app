@@ -29,6 +29,16 @@ npm start
 
 Open `http://localhost:3000` in two browser tabs, join the **same room**, and click a user to start a call.
 
+## How to test a call properly (important)
+
+Camera/mic problems are almost always a **test setup** issue, not a code bug:
+
+1. **Use two DIFFERENT browsers** (e.g. Chrome + Firefox/Edge) on the same machine, or two devices on the same network. Opening two tabs in the **same** browser shares one camera — the second tab's `getUserMedia` will fail because the device is already in use by the first tab.
+2. **Grant camera + microphone permission** when the browser prompts. If you denied it once, click the camera icon in the address bar to reset it, then click **Join Room** again (the app re-requests media on Join).
+3. **`localhost` counts as a secure context**, so the camera works over plain `http://localhost`. If you host it anywhere else, it **must be HTTPS** or `getUserMedia` is blocked by the browser.
+4. **Join the same room name** in both clients, then click the other user in the online list and press **Start Call**.
+5. The local preview appears immediately after permission is granted. The remote video appears once the peer connection is established (watch the status text).
+
 ## Tech Stack
 
 | Layer | Technology |
