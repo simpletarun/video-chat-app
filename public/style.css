@@ -7,23 +7,25 @@
 body {
   background: #0f172a;
   color: white;
-  font-family: Arial, sans-serif;
+  font-family: "Segoe UI", Arial, sans-serif;
 }
 
 .container {
   width: 95%;
+  max-width: 1100px;
   margin: auto;
   padding: 20px;
 }
 
 .header {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .header h1 {
-  font-size: 40px;
+  font-size: 34px;
   color: #38bdf8;
+  letter-spacing: 0.5px;
 }
 
 .status-bar {
@@ -47,6 +49,37 @@ body {
 .status-dot.offline { background: #ef4444; }
 .status-dot.connecting { background: #eab308; }
 
+.room-pill {
+  background: #334155;
+  color: #38bdf8;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.join-bar {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.join-bar input {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  outline: none;
+  background: #1e293b;
+  color: white;
+  width: 200px;
+}
+
+.join-bar input:focus {
+  border-color: #38bdf8;
+}
+
 .video-section {
   display: flex;
   gap: 20px;
@@ -60,16 +93,19 @@ body {
   border-radius: 15px;
   width: 45%;
   min-width: 300px;
-  box-shadow: 0 0 15px rgba(0,0,0,0.5);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
   position: relative;
 }
 
 .video-card h3 {
   margin-bottom: 10px;
+  color: #e2e8f0;
 }
 
 video {
   width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
   border-radius: 12px;
   background: black;
   display: block;
@@ -77,14 +113,15 @@ video {
 
 .remote-status {
   position: absolute;
-  inset: 0;
+  inset: 46px 15px 15px 15px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(15, 23, 42, 0.85);
   color: #f87171;
-  font-size: 18px;
-  border-radius: 15px;
+  font-size: 16px;
+  border-radius: 12px;
+  text-align: center;
 }
 
 .controls {
@@ -95,27 +132,19 @@ video {
   flex-wrap: wrap;
 }
 
-.controls input {
-  padding: 12px;
-  border-radius: 10px;
-  border: none;
-  outline: none;
-  width: 180px;
-}
-
 button {
   background: #38bdf8;
-  color: black;
+  color: #0f172a;
   border: none;
-  padding: 12px 25px;
+  padding: 12px 22px;
   border-radius: 10px;
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
-  transition: 0.3s;
+  transition: 0.2s;
   font-weight: 600;
 }
 
-button:hover {
+button:hover:not(:disabled) {
   background: #0ea5e9;
 }
 
@@ -129,7 +158,7 @@ button.danger {
   color: white;
 }
 
-button.danger:hover {
+button.danger:hover:not(:disabled) {
   background: #dc2626;
 }
 
@@ -138,7 +167,7 @@ button.success {
   color: white;
 }
 
-button.success:hover {
+button.success:hover:not(:disabled) {
   background: #16a34a;
 }
 
@@ -154,6 +183,15 @@ button.success:hover {
   color: #38bdf8;
 }
 
+.count {
+  background: #334155;
+  color: #e2e8f0;
+  padding: 1px 9px;
+  border-radius: 12px;
+  font-size: 13px;
+  margin-left: 4px;
+}
+
 .online-users ul {
   list-style: none;
   display: flex;
@@ -161,11 +199,35 @@ button.success:hover {
   flex-wrap: wrap;
 }
 
-.online-users li {
+.user-item {
   background: #334155;
-  padding: 6px 14px;
+  padding: 7px 14px;
   border-radius: 20px;
   font-size: 14px;
+  cursor: pointer;
+  transition: 0.15s;
+  border: 2px solid transparent;
+}
+
+.user-item:hover:not(.self) {
+  background: #475569;
+}
+
+.user-item.self {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.user-item.selected {
+  border-color: #38bdf8;
+  background: #0c4a6e;
+  color: #e0f2fe;
+}
+
+.hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #64748b;
 }
 
 .chat-box {
@@ -189,6 +251,15 @@ button.success:hover {
   padding: 10px;
   background: #334155;
   border-radius: 10px;
+  word-wrap: break-word;
+}
+
+.message.system {
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 13px;
+  background: transparent;
 }
 
 .message .msg-sender {
@@ -213,12 +284,14 @@ button.success:hover {
   border-radius: 10px;
   border: none;
   outline: none;
+  background: #0f172a;
+  color: white;
 }
 
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -231,6 +304,7 @@ button.success:hover {
   border-radius: 20px;
   text-align: center;
   min-width: 320px;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
 }
 
 .modal-content h2 {
@@ -251,4 +325,13 @@ button.success:hover {
 
 .hidden {
   display: none !important;
+}
+
+@media (max-width: 700px) {
+  .video-card {
+    width: 100%;
+  }
+  .header h1 {
+    font-size: 26px;
+  }
 }

@@ -15,8 +15,11 @@ const statusIndicator = document.getElementById("statusIndicator");
 const statusText = document.getElementById("statusText");
 const remoteStatus = document.getElementById("remoteStatus");
 const userList = document.getElementById("userList");
-const usernameInput = document.getElementById("usernameInput");
-const setNameBtn = document.getElementById("setNameBtn");
+const roomInput = document.getElementById("roomInput");
+const nameInput = document.getElementById("nameInput");
+const joinBtn = document.getElementById("joinBtn");
+const roomIndicator = document.getElementById("roomIndicator");
+const roomCount = document.getElementById("roomCount");
 const incomingCallModal = document.getElementById("incomingCallModal");
 const callerName = document.getElementById("callerName");
 const acceptCallBtn = document.getElementById("acceptCallBtn");
@@ -27,13 +30,17 @@ let peer;
 let targetUser;
 let myId;
 let myUsername = "";
+let myRoom = null;
 let isMuted = false;
 let isVideoOff = false;
 let incomingCallData = null;
+let pendingCandidates = [];
+const knownUsers = new Map();
 
 const servers = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
     {
       urls: "turn:openrelay.metered.ca:80",
       username: "openrelayproject",
@@ -83,39 +90,50 @@ function addMessage(sender, text, time) {
 
 function addSystemMessage(text) {
   const div = document.createElement("div");
-  div.className = "message";
-  div.style.textAlign = "center";
-  div.style.color = "#94a3b8";
-  div.style.fontStyle = "italic";
-  div.style.fontSize = "13px";
-  div.style.background = "transparent";
+  div.className = "message system";
   div.textContent = text;
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
 }
 
-function updateUserList(users) {
+function renderUserList() {
   userList.innerHTML = "";
-  users.forEach(u => {
+  roomCount.textContent = String(knownUsers.size);
+  knownUsers.forEach((username, id) => {
     const li = document.createElement("li");
-    li.textContent = u.username + (u.id === myId ? " (you)" : "");
-    li.dataset.id = u.id;
+    li.className = "user-item";
+    if (id === myId) li.classList.add("self");
+    if (id === targetUser) li.classList.add("selected");
+    li.textContent = username + (id === myId ? " (you)" : "");
+    li.dataset.id = id;
+    if (id !== myId) {
+      li.addEventListener("click", () => selectUser(id));
+    }
     userList.appendChild(li);
   });
 }
 
+function selectUser(id) {
+  if (id === myId) return;
+  targetUser = id;
+  renderUserList();
+  addSystemMessage(`Selected ${knownUsers.get(id) || "user"} as call target.`);
+}
+
 function resetCallUI() {
   if (peer) {
-    peer.close();
+    try { peer.close(); } catch (e) {}
     peer = null;
   }
+  pendingCandidates = [];
   targetUser = null;
   callBtn.disabled = false;
   endCallBtn.disabled = true;
   muteBtn.disabled = true;
   videoBtn.disabled = true;
   remoteVideo.srcObject = null;
-  remoteStatus.classList.add("hidden");
+  remoteStatus.classList.remove("hidden");
+  remoteStatus.textContent = "No one connected";
   remoteLabel.textContent = "Remote User";
   incomingCallModal.classList.add("hidden");
   incomingCallData = null;
@@ -123,6 +141,7 @@ function resetCallUI() {
   isVideoOff = false;
   muteBtn.textContent = "🎤 Mute";
   videoBtn.textContent = "📹 Video Off";
+  renderUserList();
 }
 
 async function initMedia() {
@@ -132,19 +151,18 @@ async function initMedia() {
       audio: true
     });
     localVideo.srcObject = localStream;
-    setStatus("online");
   } catch (err) {
     console.error("Media error:", err);
-    setStatus("offline");
-    addSystemMessage("Camera/microphone access denied. Please grant permissions.");
+    addSystemMessage("Camera/microphone access denied. You can still receive calls.");
   }
 }
 
 function createPeer() {
   if (peer) {
-    peer.close();
+    try { peer.close(); } catch (e) {}
     peer = null;
   }
+  pendingCandidates = [];
 
   peer = new RTCPeerConnection(servers);
 
@@ -155,7 +173,9 @@ function createPeer() {
   }
 
   peer.ontrack = event => {
-    remoteVideo.srcObject = event.streams[0];
+    if (event.streams && event.streams[0]) {
+      remoteVideo.srcObject = event.streams[0];
+    }
     remoteStatus.classList.add("hidden");
   };
 
@@ -169,19 +189,45 @@ function createPeer() {
   };
 
   peer.oniceconnectionstatechange = () => {
-    if (peer.iceConnectionState === "disconnected" || peer.iceConnectionState === "failed") {
-      remoteStatus.classList.remove("hidden");
+    if (!peer) return;
+    if (peer.iceConnectionState === "failed" || peer.iceConnectionState === "closed") {
       addSystemMessage("Call ended or connection lost.");
       resetCallUI();
+    } else if (peer.iceConnectionState === "disconnected") {
+      remoteStatus.classList.remove("hidden");
+      remoteStatus.textContent = "Reconnecting...";
+    } else if (peer.iceConnectionState === "connected" || peer.iceConnectionState === "completed") {
+      remoteStatus.classList.add("hidden");
     }
   };
 }
 
-socket.on("connect", () => setStatus("online"));
+function addCandidate(candidate) {
+  if (peer && peer.remoteDescription && peer.remoteDescription.type) {
+    peer.addIceCandidate(candidate).catch(e => console.error("addIceCandidate:", e));
+  } else {
+    pendingCandidates.push(candidate);
+  }
+}
+
+function flushCandidates() {
+  if (!peer) return;
+  pendingCandidates.forEach(c => {
+    peer.addIceCandidate(c).catch(e => console.error("flushIce:", e));
+  });
+  pendingCandidates = [];
+}
+
+socket.on("connect", () => {
+  setStatus("online");
+  joinRoom(roomInput.value.trim() || "lobby", nameInput.value.trim());
+});
 
 socket.on("disconnect", () => {
   setStatus("offline");
   addSystemMessage("Disconnected from server.");
+  knownUsers.clear();
+  renderUserList();
   resetCallUI();
 });
 
@@ -191,49 +237,48 @@ socket.on("your-info", info => {
   localLabel.textContent = `${info.username} (You)`;
 });
 
-socket.on("all-users", users => {
-  updateUserList(users);
-  if (users.length > 0 && !targetUser) {
-    targetUser = users[0].id;
-  }
+socket.on("room-joined", data => {
+  myRoom = data.room;
+  roomIndicator.textContent = "Room: " + data.room;
+  roomIndicator.classList.remove("hidden");
+  knownUsers.clear();
+  (data.users || []).forEach(u => knownUsers.set(u.id, u.username));
+  renderUserList();
+  addSystemMessage(`Joined room "${data.room}".`);
+  const others = [...knownUsers.keys()].filter(id => id !== myId);
+  if (others.length > 0 && !targetUser) selectUser(others[0]);
 });
 
 socket.on("user-joined", user => {
-  const li = document.createElement("li");
-  li.textContent = user.username + (user.id === myId ? " (you)" : "");
-  li.dataset.id = user.id;
-  userList.appendChild(li);
+  knownUsers.set(user.id, user.username);
+  renderUserList();
   addSystemMessage(`${user.username} joined the room`);
-  if (!targetUser) targetUser = user.id;
+  if (!targetUser) selectUser(user.id);
 });
 
 socket.on("user-left", user => {
-  document.querySelectorAll("#userList li").forEach(li => {
-    if (li.dataset.id === user.id) li.remove();
-  });
-  addSystemMessage(`${user.username} left the room`);
+  knownUsers.delete(user.id);
   if (targetUser === user.id) {
-    remoteStatus.classList.remove("hidden");
+    addSystemMessage(`${user.username} left the room`);
     resetCallUI();
+  } else {
+    addSystemMessage(`${user.username} left the room`);
   }
+  renderUserList();
 });
 
 socket.on("user-renamed", user => {
-  const items = document.querySelectorAll("#userList li");
-  items.forEach(li => {
-    if (li.dataset.id === user.id) {
-      li.textContent = user.username + (user.id === myId ? " (you)" : "");
-    }
-  });
+  knownUsers.set(user.id, user.username);
   if (user.id === myId) {
     myUsername = user.username;
     localLabel.textContent = `${user.username} (You)`;
   }
+  renderUserList();
 });
 
 callBtn.onclick = async () => {
   if (!targetUser) {
-    alert("No user online");
+    alert("Select a user to call from the online list.");
     return;
   }
   if (!localStream) {
@@ -243,6 +288,7 @@ callBtn.onclick = async () => {
 
   callBtn.disabled = true;
   createPeer();
+  remoteLabel.textContent = knownUsers.get(targetUser) || "Remote User";
 
   try {
     const offer = await peer.createOffer();
@@ -276,13 +322,16 @@ acceptCallBtn.onclick = async () => {
   if (!incomingCallData) return;
   incomingCallModal.classList.add("hidden");
   const incoming = incomingCallData;
+  incomingCallData = null;
 
   targetUser = incoming.caller;
+  remoteLabel.textContent = incoming.callerName || knownUsers.get(incoming.caller) || "Remote User";
   callBtn.disabled = true;
   createPeer();
 
   try {
     await peer.setRemoteDescription(new RTCSessionDescription(incoming.sdp));
+    flushCandidates();
     const answer = await peer.createAnswer();
     await peer.setLocalDescription(answer);
     socket.emit("answer", {
@@ -298,7 +347,6 @@ acceptCallBtn.onclick = async () => {
     callBtn.disabled = false;
     resetCallUI();
   }
-  incomingCallData = null;
 };
 
 rejectCallBtn.onclick = () => {
@@ -312,6 +360,7 @@ rejectCallBtn.onclick = () => {
 socket.on("answer", async incoming => {
   try {
     await peer.setRemoteDescription(new RTCSessionDescription(incoming.sdp));
+    flushCandidates();
     addSystemMessage("Call connected.");
   } catch (err) {
     console.error("Answer set error:", err);
@@ -319,11 +368,7 @@ socket.on("answer", async incoming => {
 });
 
 socket.on("ice-candidate", async candidate => {
-  try {
-    if (peer) await peer.addIceCandidate(candidate);
-  } catch (e) {
-    console.error("ICE error:", e);
-  }
+  if (candidate) addCandidate(candidate);
 });
 
 endCallBtn.onclick = () => {
@@ -340,14 +385,14 @@ socket.on("call-ended", () => {
 muteBtn.onclick = () => {
   if (!localStream) return;
   isMuted = !isMuted;
-  localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+  localStream.getAudioTracks().forEach(t => (t.enabled = !isMuted));
   muteBtn.textContent = isMuted ? "🎤 Unmute" : "🎤 Mute";
 };
 
 videoBtn.onclick = () => {
   if (!localStream) return;
   isVideoOff = !isVideoOff;
-  localStream.getVideoTracks().forEach(t => t.enabled = !isVideoOff);
+  localStream.getVideoTracks().forEach(t => (t.enabled = !isVideoOff));
   videoBtn.textContent = isVideoOff ? "📹 Video On" : "📹 Video Off";
 };
 
@@ -362,20 +407,21 @@ messageInput.addEventListener("keydown", e => {
   if (e.key === "Enter") sendBtn.onclick();
 });
 
-socket.on("chat-message", data => {
-  addMessage(data.sender, data.message, data.timestamp);
-});
+function joinRoom(room, name) {
+  socket.emit("join-room", { room, username: name });
+}
 
-setNameBtn.onclick = () => {
-  const name = usernameInput.value.trim();
-  if (name) {
-    socket.emit("set-username", name);
-    usernameInput.value = "";
-  }
+joinBtn.onclick = () => {
+  const room = roomInput.value.trim() || "lobby";
+  const name = nameInput.value.trim();
+  joinRoom(room, name);
 };
 
-usernameInput.addEventListener("keydown", e => {
-  if (e.key === "Enter") setNameBtn.onclick();
+nameInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") joinBtn.onclick();
+});
+roomInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") joinBtn.onclick();
 });
 
 initMedia();

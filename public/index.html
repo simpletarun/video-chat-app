@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Video Chat App</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
@@ -12,7 +14,14 @@
     <div class="status-bar">
       <span id="statusIndicator" class="status-dot offline"></span>
       <span id="statusText">Disconnected</span>
+      <span id="roomIndicator" class="room-pill hidden"></span>
     </div>
+  </div>
+
+  <div class="join-bar">
+    <input type="text" id="roomInput" placeholder="Room name" maxlength="40" value="lobby" />
+    <input type="text" id="nameInput" placeholder="Your display name" maxlength="20" />
+    <button id="joinBtn">Join Room</button>
   </div>
 
   <div class="video-section">
@@ -23,18 +32,11 @@
     <div class="video-card">
       <h3 id="remoteLabel">Remote User</h3>
       <video id="remoteVideo" autoplay playsinline></video>
-      <div id="remoteStatus" class="remote-status hidden">Remote user disconnected</div>
+      <div id="remoteStatus" class="remote-status hidden">No one connected</div>
     </div>
   </div>
 
   <div class="controls">
-    <input
-      type="text"
-      id="usernameInput"
-      placeholder="Set display name..."
-      maxlength="20"
-    />
-    <button id="setNameBtn">Set Name</button>
     <button id="callBtn">📞 Start Call</button>
     <button id="endCallBtn" class="danger" disabled>✖ End Call</button>
     <button id="muteBtn" disabled>🎤 Mute</button>
@@ -42,18 +44,15 @@
   </div>
 
   <div class="online-users">
-    <h3>Online</h3>
+    <h3>Online in room <span id="roomCount" class="count">0</span></h3>
     <ul id="userList"></ul>
+    <p class="hint">Tip: click a user to select them as the call target.</p>
   </div>
 
   <div class="chat-box">
     <div id="messages"></div>
     <div class="chat-input">
-      <input
-        type="text"
-        id="messageInput"
-        placeholder="Type message..."
-      />
+      <input type="text" id="messageInput" placeholder="Type message..." maxlength="500" />
       <button id="sendBtn">Send</button>
     </div>
   </div>
